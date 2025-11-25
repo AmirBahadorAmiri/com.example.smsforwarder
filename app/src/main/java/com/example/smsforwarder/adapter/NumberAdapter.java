@@ -94,7 +94,8 @@ public class NumberAdapter extends RecyclerView.Adapter<NumberAdapter.MainHolder
 
     @Override
     public void onBindViewHolder(@NonNull MainHolder holder, int position) {
-        holder.fromNumber.setText(numberModelArrayList.get(position).getForwardFrom());
+        holder.fromNumber.setText("ارسال از: " + numberModelArrayList.get(position).getForwardFrom());
+        holder.toNumber.setText("ارسال به: " + numberModelArrayList.get(position).getForwardTo());
         holder.number_delete.setOnClickListener(v -> RoomDB.getInstance(holder.itemView.getContext())
                 .numberDao()
                 .delete(numberModelArrayList.get(position))
@@ -130,12 +131,13 @@ public class NumberAdapter extends RecyclerView.Adapter<NumberAdapter.MainHolder
 
     public class MainHolder extends RecyclerView.ViewHolder {
 
-        AppCompatTextView fromNumber;
+        AppCompatTextView fromNumber,toNumber;
         AppCompatImageView number_delete;
 
         public MainHolder(@NonNull View itemView) {
             super(itemView);
             fromNumber = itemView.findViewById(R.id.fromNumber);
+            toNumber = itemView.findViewById(R.id.toNumber);
             number_delete = itemView.findViewById(R.id.number_delete);
         }
     }

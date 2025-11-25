@@ -1,8 +1,15 @@
 package com.example.smsforwarder.activity;
 
 import android.Manifest;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -17,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.smsforwarder.R;
 import com.example.smsforwarder.adapter.NumberAdapter;
 import com.example.smsforwarder.model.NumberModel;
+import com.example.smsforwarder.smsreceiver.SmsForegroundService;
 import com.example.smsforwarder.tools.copy_helper.CopyHelper;
 import com.example.smsforwarder.tools.devices.Devices;
 import com.example.smsforwarder.tools.dexter.DexterTool;
@@ -33,15 +41,11 @@ import com.sjapps.library.customdialog.CustomViewDialog;
 import com.sjapps.library.customdialog.DialogPreset;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class MainActivity extends BaseActivity {
 
-    String[] permissions = new String[]{
-            Manifest.permission.READ_SMS,
-            Manifest.permission.RECEIVE_SMS,
-            Manifest.permission.SEND_SMS
-    };
-
+    private static final String TAG = "OMG";
     String choose_sim = "choose_sim";
     String user_number = "user_number";
 
@@ -53,6 +57,8 @@ public class MainActivity extends BaseActivity {
     NumberAdapter numberAdapter;
     MaterialToolbar appToolBar;
     public AppCompatTextView dont_save_numbers;
+
+    Pattern pattern = Pattern.compile("\\b9[0-9]{9}\\b");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,10 +81,54 @@ public class MainActivity extends BaseActivity {
     private void setup() {
         setSupportActionBar(appToolBar);
 
+        String[] permissions;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            permissions = new String[]{
+                    Manifest.permission.READ_SMS,
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.FOREGROUND_SERVICE,
+                    Manifest.permission.WAKE_LOCK,
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED,
+                    Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC,
+                    Manifest.permission.POST_NOTIFICATIONS
+            };
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions = new String[]{
+                    Manifest.permission.READ_SMS,
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.FOREGROUND_SERVICE,
+                    Manifest.permission.WAKE_LOCK,
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED,
+                    Manifest.permission.POST_NOTIFICATIONS
+            };
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            permissions = new String[]{
+                    Manifest.permission.READ_SMS,
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.FOREGROUND_SERVICE,
+                    Manifest.permission.WAKE_LOCK,
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED
+            };
+        } else {
+            permissions = new String[]{
+                    Manifest.permission.READ_SMS,
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.WAKE_LOCK,
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED
+            };
+        }
+
         DexterTool.requestPermissions(this, permissions, new MultiplePermissionsListener() {
             @Override
             public void onPermissionsChecked(MultiplePermissionsReport multiplePermissionsReport) {
-
+                if (multiplePermissionsReport.areAllPermissionsGranted()) {
+                    Log.d(TAG, "onPermissionsChecked: true");
+                    start_sms_services();
+                }
             }
 
             @Override
@@ -94,6 +144,8 @@ public class MainActivity extends BaseActivity {
                 .setDialogBackgroundColor(ContextCompat.getColor(this, R.color.white))
                 .swipeToDismiss(false)
                 .dialog.setCancelable(false);
+
+        
 
         if (SharedSingle.getSharedHelper(this).readInt(choose_sim) == 0) {
 
@@ -164,6 +216,29 @@ public class MainActivity extends BaseActivity {
             contactNumber.setInputType(InputType.TYPE_CLASS_NUMBER);
             contactNumber.setHint("شماره خودتان : مثال 9123456789");
             contactNumber.setText(SharedSingle.getSharedHelper(this).readString(user_number));
+            contactNumber.setFilters(new InputFilter[]{
+                    new InputFilter.LengthFilter(10)
+            });
+            contactNumber.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void afterTextChanged(Editable editable) {
+                    if (pattern.matcher(editable.toString().trim()).matches()) {
+                        contactNumber.setTextColor(Color.GREEN);
+                    } else {
+                        contactNumber.setError("شماره باید 10 رقم باشد");
+                        contactNumber.setTextColor(Color.RED);
+                    }
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+            });
+
 
             CustomViewDialog customViewDialog = new CustomViewDialog();
             customViewDialog.Builder(this)
@@ -175,7 +250,7 @@ public class MainActivity extends BaseActivity {
                     .addCustomView(contactNumber)
                     .onButtonClick(() -> {
                         String contact = contactNumber.getText().toString().trim();
-                        if (contact.isEmpty()) {
+                        if (!pattern.matcher(contact).matches()) {
                             Toast.makeText(this, "لطفا شماره تلفن مورد نظر را وارد کنید", Toast.LENGTH_SHORT).show();
                         } else {
                             SharedSingle.getSharedHelper(this).insert(user_number, contact);
@@ -187,13 +262,21 @@ public class MainActivity extends BaseActivity {
         });
 
         fab.setOnClickListener(v -> {
+
             EditText forwardFrom = new EditText(this);
             forwardFrom.setInputType(InputType.TYPE_CLASS_NUMBER);
             forwardFrom.setHint("هر پیامک دریافتی از : مثال 9123456789");
+            forwardFrom.setFilters(new InputFilter[]{
+                    new InputFilter.LengthFilter(10)
+            });
 
             EditText forwardTo = new EditText(this);
             forwardTo.setInputType(InputType.TYPE_CLASS_NUMBER);
             forwardTo.setHint("هدایت شود به : مثال 9123456789");
+            forwardTo.setFilters(new InputFilter[]{
+                    new InputFilter.LengthFilter(10)
+            });
+
 
             CustomViewDialog customViewDialog = new CustomViewDialog();
             customViewDialog.Builder(this)
@@ -209,7 +292,7 @@ public class MainActivity extends BaseActivity {
                         String to = forwardTo.getText().toString().trim();
 
                         if (from.isEmpty() || to.isEmpty()) {
-                            Toast.makeText(this, "لطفا شماره تلفن مورد نظر را وارد کنید", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "لطفا شماره تلفن مورد نظر را  بدرستی وارد کنید", Toast.LENGTH_SHORT).show();
                         } else {
                             numberAdapter.addNumber(this, new NumberModel(from, to));
                             customViewDialog.dismiss();
@@ -219,4 +302,14 @@ public class MainActivity extends BaseActivity {
         });
 
     }
+
+    public void start_sms_services() {
+        Intent intent = new Intent(this, SmsForegroundService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
+    }
+
 }
