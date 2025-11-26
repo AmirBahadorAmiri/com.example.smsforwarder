@@ -10,6 +10,7 @@ import com.example.smsforwarder.model.NumberModel;
 import java.util.List;
 
 import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 
 @Dao
@@ -26,6 +27,9 @@ public interface NumberDao {
 
     @Query("SELECT * FROM number_tb")
     Single<List<NumberModel>> getAll();
+
+    @Query("SELECT * FROM number_tb WHERE forwardFrom like :sender limit 1")
+    Maybe<NumberModel> searchBySenderNumber(String sender);
 
 
 }

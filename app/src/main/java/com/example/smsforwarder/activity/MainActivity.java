@@ -3,8 +3,10 @@ package com.example.smsforwarder.activity;
 import android.Manifest;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
@@ -35,12 +37,14 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.karumi.dexter.MultiplePermissionsReport;
 import com.karumi.dexter.PermissionToken;
+import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 import com.sjapps.library.customdialog.CustomViewDialog;
 import com.sjapps.library.customdialog.DialogPreset;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public class MainActivity extends BaseActivity {
@@ -82,58 +86,76 @@ public class MainActivity extends BaseActivity {
         setSupportActionBar(appToolBar);
 
         String[] permissions;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             permissions = new String[]{
                     Manifest.permission.READ_SMS,
-                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.SEND_SMS,
+                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.FOREGROUND_SERVICE,
                     Manifest.permission.WAKE_LOCK,
                     Manifest.permission.RECEIVE_BOOT_COMPLETED,
-                    Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC,
-                    Manifest.permission.POST_NOTIFICATIONS
+                    Manifest.permission.POST_NOTIFICATIONS,
+                    Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
             };
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        } else if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions = new String[]{
                     Manifest.permission.READ_SMS,
-                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.SEND_SMS,
+                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.FOREGROUND_SERVICE,
                     Manifest.permission.WAKE_LOCK,
                     Manifest.permission.RECEIVE_BOOT_COMPLETED,
-                    Manifest.permission.POST_NOTIFICATIONS
+                    Manifest.permission.POST_NOTIFICATIONS,
+                    Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
             };
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             permissions = new String[]{
                     Manifest.permission.READ_SMS,
-                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.SEND_SMS,
+                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.FOREGROUND_SERVICE,
                     Manifest.permission.WAKE_LOCK,
-                    Manifest.permission.RECEIVE_BOOT_COMPLETED
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED,
+                    Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
             };
         } else {
             permissions = new String[]{
                     Manifest.permission.READ_SMS,
-                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.SEND_SMS,
+                    Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.WAKE_LOCK,
-                    Manifest.permission.RECEIVE_BOOT_COMPLETED
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED,
+                    Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
             };
         }
 
         DexterTool.requestPermissions(this, permissions, new MultiplePermissionsListener() {
             @Override
             public void onPermissionsChecked(MultiplePermissionsReport multiplePermissionsReport) {
+                Log.d(TAG, "onPermissionsChecked: yyyyy");
                 if (multiplePermissionsReport.areAllPermissionsGranted()) {
                     Log.d(TAG, "onPermissionsChecked: true");
                     start_sms_services();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                    }
+                } else {
+                    Log.d(TAG, "onPermissionsChecked: false");
+                    multiplePermissionsReport.getDeniedPermissionResponses().forEach(new Consumer<PermissionDeniedResponse>() {
+                        @Override
+                        public void accept(PermissionDeniedResponse permissionDeniedResponse) {
+                            Log.d(TAG, "dont accept: " + permissionDeniedResponse.getPermissionName());
+                        }
+                    });
                 }
             }
 
             @Override
             public void onPermissionRationaleShouldBeShown(List<PermissionRequest> list, PermissionToken permissionToken) {
-
+                Log.d(TAG, "onPermissionRationaleShouldBeShown: ");
             }
         });
 
@@ -145,7 +167,6 @@ public class MainActivity extends BaseActivity {
                 .swipeToDismiss(false)
                 .dialog.setCancelable(false);
 
-        
 
         if (SharedSingle.getSharedHelper(this).readInt(choose_sim) == 0) {
 
