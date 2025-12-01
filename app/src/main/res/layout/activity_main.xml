@@ -27,6 +27,7 @@
         app:srcCompat="@drawable/round_settings_24"
         android:clickable="true"
         android:focusable="true"
+        android:padding="4dp"
         android:background="@drawable/ripple_color"
         app:layout_constraintTop_toTopOf="@id/appToolBar"
         app:layout_constraintBottom_toBottomOf="@id/appToolBar"
