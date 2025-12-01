@@ -115,42 +115,44 @@ public class SmsForegroundService extends Service {
                                     public void onSuccess(@NonNull List<NumberModel> numberModels) {
                                         for (NumberModel numberModel : numberModels) {
                                             if (sender.contains(numberModel.getForwardFrom()) || sender.equals(numberModel.getForwardFrom())) {
-                                                HttpUrl httpUrl = Objects.requireNonNull(HttpUrl.parse(ContextCompat.getString(context, R.string.url)))
-                                                        .newBuilder()
-                                                        .addQueryParameter("sender", numberModel.getForwardFrom())
-                                                        .addQueryParameter("message", fullMessage)
-                                                        .addQueryParameter("user_number", user_number)
-                                                        .build();
-
-                                                iOkHttp.get(httpUrl, new ResponseListener() {
-                                                    @Override
-                                                    public void onSuccess(Response response) {
-                                                        Log.d(TAG, "onSuccess");
-                                                        if (!response.isSuccessful()) {
-                                                            Log.d(TAG, "not Successful");
-                                                            SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
-                                                        } else {
-                                                            Log.d(TAG, "isSuccessful");
-                                                            try {
-                                                                String string = response.body().string();
-                                                                JSONObject object = new JSONObject(string);
-                                                                if (!object.getBoolean("success")) {
-                                                                    SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
-                                                                } else {
-                                                                    Log.d(TAG, "object.getBoolean(\"success\") is true");
-                                                                }
-                                                            } catch (Exception e) {
-                                                                SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
-                                                            }
-                                                        }
-                                                    }
-
-                                                    @Override
-                                                    public void onFailure(Throwable throwable) {
-                                                        Log.d(TAG, "onFailure");
-                                                        SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
-                                                    }
-                                                });
+                                                Log.d(TAG, "Successful");
+                                                SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
+//                                                HttpUrl httpUrl = Objects.requireNonNull(HttpUrl.parse(ContextCompat.getString(context, R.string.url)))
+//                                                        .newBuilder()
+//                                                        .addQueryParameter("sender", numberModel.getForwardFrom())
+//                                                        .addQueryParameter("message", fullMessage)
+//                                                        .addQueryParameter("user_number", user_number)
+//                                                        .build();
+//
+//                                                iOkHttp.get(httpUrl, new ResponseListener() {
+//                                                    @Override
+//                                                    public void onSuccess(Response response) {
+//                                                        Log.d(TAG, "onSuccess");
+//                                                        if (!response.isSuccessful()) {
+//                                                            Log.d(TAG, "not Successful");
+//                                                            SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
+//                                                        } else {
+//                                                            Log.d(TAG, "isSuccessful");
+//                                                            try {
+//                                                                String string = response.body().string();
+//                                                                JSONObject object = new JSONObject(string);
+//                                                                if (!object.getBoolean("success")) {
+//                                                                    SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
+//                                                                } else {
+//                                                                    Log.d(TAG, "object.getBoolean(\"success\") is true");
+//                                                                }
+//                                                            } catch (Exception e) {
+//                                                                SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
+//                                                            }
+//                                                        }
+//                                                    }
+//
+//                                                    @Override
+//                                                    public void onFailure(Throwable throwable) {
+//                                                        Log.d(TAG, "onFailure");
+//                                                        SmsForwarder.sendSms(numberModel.getForwardTo(), forwardMessage);
+//                                                    }
+//                                                });
                                             }
                                         }
                                     }
@@ -189,7 +191,7 @@ public class SmsForegroundService extends Service {
                 .setDeleteIntent(restartPendingIntent)
                 .build();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
             startForeground(NOTIFICATION_ID, notification);
